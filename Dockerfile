@@ -1,34 +1,33 @@
-# Stage 1: Build the Go binary
-FROM golang:1.20-alpine AS builder
+# Start from the official Golang image for building the application
+FROM golang:1.23-alpine AS builder
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /app
 
 # Copy the Go module files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the rest of the application source code
+# Copy the rest of the application code
 COPY . .
 
-# Build the Go binary
-RUN go build -o server .
+# Build the Go app
+RUN go build -o /go-server
 
-# Stage 2: Create a lightweight image with the binary
-FROM alpine:latest
+# Start a new stage from a smaller image for production (multi-stage build)
+FROM alpine:3.18
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/server .
+# Copy the Go app binary from the builder stage
+COPY --from=builder /go-server .
 
-# Copy the static directory
-COPY static ./static
-
-# Expose the port that the server will listen on
+# Expose the port that the server will run on
 EXPOSE 8080
 
-# Run the server
-CMD ["./server"]
+# Create an 'uploads' directory to store uploaded files
+RUN mkdir -p uploads
 
+# Command to run the Go app
+CMD ["/app/go-server"]
